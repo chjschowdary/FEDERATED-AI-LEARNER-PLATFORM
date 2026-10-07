@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-pvc
+  namespace: federaicloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-storage
+  namespace: federaicloud
+  labels:
+    app: seaweedfs-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seaweedfs-storage
+  template:
+    metadata:
+      labels:
+        app: seaweedfs-storage
+    spec:
+      containers:
+        - name: seaweedfs
+          image: chrislusf/seaweedfs:latest
+          args: ["server", "-s3", "-s3.port=8333", "-filer", "-volume", "-master", "-dir=/data"]
+          ports:
+            - containerPort: 8333
+              name: s3-api
+            - containerPort: 8888
+              name: filer
+            - containerPort: 9333
+              name: master
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: object-storage
+              mountPath: /data
+      volumes:
+        - name: object-storage
+          persistentVolumeClaim:
+            claimName: storage-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-service
+  namespace: federaicloud
+spec:
+  selector:
+    app: seaweedfs-storage
+  ports:
+    - port: 8333
+      targetPort: 8333
+      name: s3
+    - port: 8888
+      targetPort: 8888
+      name: filer

@@ -1,0 +1,125 @@
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: federaicloud-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-federai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-federai_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-federaicloud}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U federai -d federaicloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: federaicloud-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-federai_guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest_secure_pass}
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # 3. SeaweedFS S3-Compatible Object Storage Gateway
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: federaicloud-seaweedfs
+    restart: unless-stopped
+    command: "server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -filer -volume -master -dir=/data"
+    ports:
+      - "8333:8333" # S3 API Gateway
+      - "9333:9333" # Master
+      - "8888:8888" # Filer
+    volumes:
+      - seaweedfs_data:/data
+      - ./infrastructure/docker/seaweedfs_s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9333/cluster/status > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. Backend Microservices API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    container_name: federaicloud-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://federai:federai_secure_pass_2026@postgres:5432/federaicloud
+      STORAGE_BACKEND: s3
+      S3_ENDPOINT_URL: http://seaweedfs:8333
+      AWS_ACCESS_KEY_ID: seaweedadmin
+      AWS_SECRET_ACCESS_KEY: seaweedsecurepass2026
+      S3_BUCKET_NAME: federaicloud-artifacts
+      AWS_REGION: us-east-1
+      RABBITMQ_URL: amqp://federai_guest:guest_secure_pass@rabbitmq:5672/
+    ports:
+      - "8000:8000"
+
+  # 5. Frontend Command Center Web UI
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+    container_name: federaicloud-frontend
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+
+  # 6. Prometheus Metrics Scraper
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: federaicloud-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  # 7. Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: federaicloud-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  seaweedfs_data:

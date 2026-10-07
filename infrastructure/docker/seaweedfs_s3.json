@@ -1,0 +1,20 @@
+{
+  "identities": [
+    {
+      "name": "federaicloud-admin",
+      "credentials": [
+        {
+          "accessKey": "seaweedadmin",
+          "secretKey": "seaweedsecurepass2026"
+        }
+      ],
+      "actions": [
+        "Read",
+        "Write",
+        "List",
+        "Tagging",
+        "Admin"
+      ]
+    }
+  ]
+}

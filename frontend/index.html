@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FederAI Cloud — Federated AI Cloud Infrastructure & Control Plane</title>
+  <meta name="description" content="A Cloud-Native, Secure and Privacy-Preserving Infrastructure for Federated AI. Train Together. Share Intelligence, Not Data.">
+  
+  <!-- Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/src/styles/main.css?v=2026_rbac_viva_1">
+  <link rel="stylesheet" href="/static/src/styles/components.css?v=2026_rbac_viva_1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230ea5e9'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
+</head>
+<body>
+  <div id="app">
+    <!-- Initial Loading Fallback -->
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
+      <div style="width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(14, 165, 233, 0.2); border-top-color: #0ea5e9; animation: spin 1s linear infinite;"></div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #94a3b8;">
+        INITIALIZING FEDERAI CLOUD CONTROL PLANE...
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <!-- ES Module Application with Cache-Buster -->
+  <script type="module" src="/static/src/app.js?v=2026_rbac_viva_1"></script>
+</body>
+</html>
