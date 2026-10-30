@@ -74,3 +74,22 @@ def require_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+optional_security = HTTPBearer(auto_error=False)
+
+def get_optional_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Retrieves current user if Bearer token is provided, without raising 401 if missing."""
+    if not credentials or not credentials.credentials:
+        return None
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            return None
+        return db.query(User).filter(User.username == username).first()
+    except Exception:
+        return None

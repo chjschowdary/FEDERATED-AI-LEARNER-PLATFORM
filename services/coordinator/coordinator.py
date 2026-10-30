@@ -24,9 +24,10 @@ class FederationCoordinator:
     """
     def __init__(self):
         self.is_running = False
+        self._training_lock = asyncio.Lock()
         self.current_session_id = "FED-CLINICAL-RISK-2026"
         self._global_model = ClinicalRiskMLP()
-        self.privacy_engine = DifferentialPrivacyEngine(epsilon=4.0, delta=1e-5, clip_norm=1.2)
+        self.privacy_engine = DifferentialPrivacyEngine(epsilon=4.0, delta=1e-5, clip_norm=0.35)
 
     def get_global_weights(self) -> np.ndarray:
         return self._global_model.get_flat_weights()
@@ -47,9 +48,13 @@ class FederationCoordinator:
         attack_type: str = "sign_flipping"
     ) -> Dict[str, Any]:
         
+        if self._training_lock.locked():
+            raise RuntimeError("A training round is already actively running. Concurrent training jobs are prevented.")
+
+        await self._training_lock.acquire()
+        self.is_running = True
         db: Session = SessionLocal()
         start_time = datetime.datetime.utcnow()
-        
         try:
             # 1. Fetch active session
             session = db.query(FederationSession).filter(FederationSession.session_id == self.current_session_id).first()
@@ -254,5 +259,8 @@ class FederationCoordinator:
             raise e
         finally:
             db.close()
+            self.is_running = False
+            if self._training_lock.locked():
+                self._training_lock.release()
 
 coordinator = FederationCoordinator()

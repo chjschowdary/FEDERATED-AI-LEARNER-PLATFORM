@@ -1,17 +1,15 @@
 import { api } from './services/api.js';
-import { renderCommandCenter } from './components/CommandCenter.js';
-import { renderFederationMap } from './components/FederationMap.js';
+import { renderOverview } from './components/OverviewView.js';
+import { renderPatientDataset } from './components/PatientDataset.js';
 import { renderTrainingControl } from './components/TrainingControl.js';
-import { renderModelRegistry } from './components/ModelRegistry.js';
-import { renderSecurityCenter } from './components/SecurityCenter.js';
-import { renderInfrastructureView } from './components/InfrastructureView.js';
-import { renderCostEstimator } from './components/CostEstimator.js';
+import { renderModelResults } from './components/ModelResults.js';
+import { renderSecurityAudit } from './components/SecurityAudit.js';
+import { renderInfrastructureSettings } from './components/InfrastructureSettings.js';
 import { renderVivaReview } from './components/VivaReview.js';
-import { renderAuditLogs } from './components/AuditLogs.js';
 
-class FederAIApp {
+class FedNexusApp {
   constructor() {
-    this.currentView = 'command';
+    this.currentView = 'overview';
     this.state = {
       status: {},
       clients: [],
@@ -24,85 +22,134 @@ class FederAIApp {
 
   async init() {
     if (!api.token) {
-      this.renderLoginModal();
+      this.renderLoginScreen();
       return;
     }
 
-    this.renderLayout();
-    await this.refreshState();
+    try {
+      this.renderLayout();
+      await this.refreshState();
 
-    api.connectWebSocket();
-    api.onWebSocketMessage((event) => {
-      this.handleWebSocketEvent(event);
-    });
+      api.connectWebSocket();
+      api.onWebSocketMessage((event) => {
+        this.handleWebSocketEvent(event);
+      });
 
-    // Auto refresh telemetry every 8s
-    setInterval(() => this.refreshState(false), 8000);
+      // Auto-refresh state periodically (every 10s)
+      if (this.refreshTimer) clearInterval(this.refreshTimer);
+      this.refreshTimer = setInterval(() => this.refreshState(false), 10000);
+    } catch (err) {
+      console.warn('[FedNexus] Initial layout/state render failed, showing login:', err);
+      api.logout();
+    }
   }
 
   async refreshState(reRender = true) {
     try {
       const [status, clients, models, securityEvents, infrastructure, auditLogs] = await Promise.all([
-        api.getFederationStatus(),
-        api.getClients(),
-        api.getModels(),
-        api.getSecurityEvents(),
-        api.getInfrastructureHealth(),
-        api.getAuditLogs()
+        api.getFederationStatus().catch(() => ({})),
+        api.getClients().catch(() => []),
+        api.getModels().catch(() => []),
+        api.getSecurityEvents().catch(() => []),
+        api.getInfrastructureHealth().catch(() => ({ services: [] })),
+        api.getAuditLogs('', 50).catch(() => [])
       ]);
 
       this.state = { status, clients, models, securityEvents, infrastructure, auditLogs };
-      
+
       if (reRender) {
         this.renderCurrentView();
       }
     } catch (err) {
-      console.error('Failed to fetch federation state:', err);
+      console.warn('[FedNexus] Background state refresh notice:', err);
     }
   }
 
   handleWebSocketEvent(event) {
-    const logBox = document.getElementById('telemetry-log');
-    if (logBox) {
-      const line = document.createElement('div');
-      const time = new Date().toLocaleTimeString();
-      
-      if (event.event_type === 'TRAINING_STARTED') {
-        line.style.color = 'var(--accent-sky)';
-        line.textContent = `[${time}] [TRAINING] Round #${event.payload.round_number} launched (${event.payload.strategy}).`;
-      } else if (event.event_type === 'CLIENT_TRAINED') {
-        line.style.color = event.payload.is_attacker ? 'var(--accent-rose)' : 'var(--text-secondary)';
-        line.textContent = `[${time}] [CLIENT] Node ${event.payload.client_id} finished training (Acc: ${event.payload.accuracy}%).`;
-      } else if (event.event_type === 'SECURITY_ALERT') {
-        line.style.color = 'var(--accent-rose)';
-        line.textContent = `[${time}] [THREAT DETECTED] ${event.payload.client_id} quarantined! Confidence: ${event.payload.threat_score}%.`;
-      } else if (event.event_type === 'ROUND_COMPLETED') {
-        line.style.color = 'var(--accent-emerald)';
-        line.textContent = `[${time}] [SUCCESS] Round #${event.payload.round_number} complete! Global Acc: ${event.payload.accuracy}%.`;
-      } else {
-        line.textContent = `[${time}] [EVENT] ${event.event_type}`;
-      }
-
-      logBox.appendChild(line);
-      logBox.scrollTop = logBox.scrollHeight;
-    }
-
     if (['ROUND_COMPLETED', 'SECURITY_ALERT', 'TRAINING_STARTED'].includes(event.event_type)) {
       this.refreshState(true);
     }
+    if (event.event_type === 'SECURITY_ALERT' && event.payload) {
+      this.showSecurityNotification(event.payload);
+    }
+  }
+
+  showSecurityNotification(payload) {
+    let container = document.getElementById('security-notification-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'security-notification-container';
+      container.style.cssText = 'position: fixed; top: 70px; right: 24px; z-index: 9999; max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+      document.body.appendChild(container);
+    }
+
+    const user = api.user || {};
+    const userCid = (user.username || '').replace('_', '-');
+    const isTargetHospital = (payload.target_client === userCid);
+    const isSourceHospital = (payload.source_client === userCid);
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      pointer-events: auto;
+      background: #ffffff;
+      border: 1px solid ${isTargetHospital ? '#ef4444' : '#f59e0b'};
+      border-left: 6px solid ${isTargetHospital ? '#ef4444' : '#f59e0b'};
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    `;
+
+    let title = '⚠️ ENCLAVE SECURITY ALERT';
+    let message = payload.message || 'Unauthorized cross-tenant dataset inquiry blocked.';
+    
+    if (isTargetHospital) {
+      title = `🚨 INTRUSION ALERT FOR ${escapeHtml(payload.target_name || userCid).toUpperCase()}`;
+      message = `The Enclave Gateway intercepted an unauthorized cross-hospital query from <strong>${escapeHtml(payload.source_name || payload.source_client)}</strong> targeting your hospital's partition (search: <code class="mono">${escapeHtml(payload.search_term || '')}</code>). Access was blocked immediately.`;
+    } else if (isSourceHospital) {
+      title = `⛔ ACCESS DENIED — ABNORMAL ACTIVITY`;
+      message = `Your query targeting <strong>${escapeHtml(payload.target_name || payload.target_client)}</strong> was intercepted & blocked under decentralized HIPAA boundary rules. An incident notification was logged and transmitted to ${escapeHtml(payload.target_name)}.`;
+    }
+
+    toast.innerHTML = `
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <div style="color: ${isTargetHospital ? '#ef4444' : '#f59e0b'}; margin-top: 1px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
+          <div>
+            <div style="font-weight: 700; font-size: 0.88rem; color: #0f172a; margin-bottom: 3px;">${title}</div>
+            <div style="font-size: 0.8rem; color: #475569; line-height: 1.4;">${message}</div>
+            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+              Recorded in audit ledger &bull; ${new Date().toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-close-toast" style="background: none; border: none; font-size: 1.1rem; line-height: 1; cursor: pointer; color: #94a3b8; padding: 2px 4px;">&times;</button>
+      </div>
+    `;
+
+    toast.querySelector('.btn-close-toast')?.addEventListener('click', () => {
+      toast.remove();
+    });
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+    }, 12000);
   }
 
   navigate(viewName) {
     const user = api.user || { role: 'ADMIN' };
     const isAdminOrOp = (user.role === 'ADMIN' || user.role === 'OPERATOR');
-    
-    // Strict RBAC: Non-admin/non-operator users cannot access Training Control
+
     if (viewName === 'training' && !isAdminOrOp) {
-      viewName = 'command';
+      viewName = 'overview';
     }
 
     this.currentView = viewName;
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.nav-link-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.view === viewName);
     });
     this.renderCurrentView();
@@ -116,189 +163,192 @@ class FederAIApp {
     const isAdminOrOp = (user.role === 'ADMIN' || user.role === 'OPERATOR');
 
     if (this.currentView === 'training' && !isAdminOrOp) {
-      this.currentView = 'command';
+      this.currentView = 'overview';
     }
 
     switch (this.currentView) {
-      case 'command':
-        renderCommandCenter(container, this.state);
+      case 'overview':
+        renderOverview(container, this.state);
         break;
-      case 'map':
-        renderFederationMap(container, this.state);
+      case 'patients':
+        renderPatientDataset(container);
         break;
       case 'training':
         if (isAdminOrOp) {
           renderTrainingControl(container, this.state);
         } else {
-          renderCommandCenter(container, this.state);
+          renderOverview(container, this.state);
         }
         break;
       case 'models':
-        renderModelRegistry(container, this.state);
+        renderModelResults(container, this.state);
         break;
       case 'security':
-        renderSecurityCenter(container, this.state);
+        renderSecurityAudit(container, this.state);
         break;
       case 'infrastructure':
-        renderInfrastructureView(container, this.state);
-        break;
-      case 'cost':
-        renderCostEstimator(container);
+        renderInfrastructureSettings(container, this.state);
         break;
       case 'viva':
         renderVivaReview(container);
         break;
-      case 'audit':
-        renderAuditLogs(container, this.state);
-        break;
       default:
-        renderCommandCenter(container, this.state);
+        renderOverview(container, this.state);
     }
   }
 
   renderLayout() {
-    const user = api.user || { username: 'admin', role: 'ADMIN', organization_name: 'FederAI Cloud Admin' };
+    const user = api.user || { username: 'admin', role: 'ADMIN', organization_name: 'FedNexus Admin' };
     const isAuditor = (user.role === 'VIEWER' || user.role === 'AUDITOR');
     const isClient = (user.role === 'CLIENT');
     const isAdminOrOp = (user.role === 'ADMIN' || user.role === 'OPERATOR');
 
-    // Dynamic Role Banner
     let roleBanner = '';
     if (isAuditor) {
       roleBanner = `
-        <div style="background: rgba(245, 158, 11, 0.14); border-bottom: 1px solid rgba(245, 158, 11, 0.35); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #fbbf24; flex-wrap: wrap; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <span><strong>COMPLIANCE AUDIT MODE (READ-ONLY):</strong> Training control and threat injection buttons are removed for regulatory audit integrity. Viewing verified HMAC Audit Logs, Model Checksums, and Privacy Budgets.</span>
+        <div class="role-banner role-auditor">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span><strong>COMPLIANCE AUDIT MODE (READ-ONLY):</strong> Training control and chaos mutation tools are disabled. Audit trail and model checkpoints are cryptographically signed.</span>
           </div>
-          <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 600;">HIPAA / GDPR / SOC-2 AUDIT</span>
+          <span class="badge badge-warning">HIPAA / GDPR AUDITOR</span>
         </div>
       `;
     } else if (isClient) {
+      const hospitalLabels = {
+        'client_alpha': { name: 'Hospital Alpha Node', badge: 'HOSPITAL ALPHA' },
+        'client_delta': { name: 'Hospital Delta Node', badge: 'HOSPITAL DELTA' },
+        'client_epsilon': { name: 'Hospital Epsilon Node', badge: 'HOSPITAL EPSILON' },
+        'client_gamma': { name: 'Hospital Gamma Node', badge: 'HOSPITAL GAMMA' },
+        'client_beta': { name: 'Hospital Beta Node', badge: 'HOSPITAL BETA' },
+      };
+      const hosp = hospitalLabels[user.username] || { name: 'Hospital Node', badge: 'HOSPITAL ENCLAVE' };
       roleBanner = `
-        <div style="background: rgba(16, 185, 129, 0.14); border-bottom: 1px solid rgba(16, 185, 129, 0.35); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #34d399; flex-wrap: wrap; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-            <span><strong>HOSPITAL ALPHA CLIENT ENCLAVE:</strong> Viewing local private clinical dataset telemetry (1,200 EHR records) and Differential Privacy budget. Global training orchestration is centrally managed by cloud operators.</span>
+        <div class="role-banner role-client">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            <span><strong>${hosp.badge} ENCLAVE:</strong> Viewing local hospital dataset partition and Differential Privacy budget. Cross-hospital inquiries are strictly monitored & quarantined.</span>
           </div>
-          <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 600;">MOUNT SINAI EDGE NODE</span>
-        </div>
-      `;
-    } else if (user.role === 'OPERATOR') {
-      roleBanner = `
-        <div style="background: rgba(14, 165, 233, 0.12); border-bottom: 1px solid rgba(14, 165, 233, 0.3); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--accent-sky); flex-wrap: wrap; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span><strong>OPERATIONS & SIMULATION CONSOLE:</strong> Full orchestration permissions enabled for federated round dispatch, consensus strategy tuning, and Byzantine threat testing.</span>
-          </div>
-          <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(14, 165, 233, 0.2); border: 1px solid var(--accent-sky); font-weight: 600;">DEVOPS / ML-OPS</span>
+          <span class="badge badge-success">${hosp.badge} NODE</span>
         </div>
       `;
     }
 
     document.getElementById('app').innerHTML = `
-      <header class="top-nav">
-        <div class="nav-brand">
-          <div class="brand-icon">F</div>
-          <div>
-            <div class="brand-title">FederAI Cloud</div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: -2px;">Train Together. Share Intelligence, Not Data.</div>
+      <header class="app-header">
+        <div class="header-top">
+          <a href="#" class="header-brand" id="brand-home-link">
+            <div class="brand-badge">F</div>
+            <div class="brand-meta">
+              <h1>FedNexus</h1>
+              <div class="tagline">Train Together. Share Intelligence, Not Data.</div>
+            </div>
+          </a>
+
+          <div class="header-actions">
+            <!-- 1-Click Demo Role Switcher for Review -->
+            <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-surface-subtle); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">ROLE:</span>
+              <select id="quick-role-select" class="form-control mono" style="padding: 2px 6px; font-size: 0.75rem; height: 26px; width: auto; background: transparent; border: none; cursor: pointer; font-weight: 600;">
+                <option value="admin" ${user.username === 'admin' ? 'selected' : ''}>Admin (Central Coordinator)</option>
+                <option value="operator" ${user.username === 'operator' ? 'selected' : ''}>Operator (Training & Chaos)</option>
+                <option value="auditor" ${user.username === 'auditor' ? 'selected' : ''}>Auditor (Read-Only Compliance)</option>
+                <option value="client_alpha" ${user.username === 'client_alpha' ? 'selected' : ''}>Hospital Alpha (Node Enclave)</option>
+                <option value="client_delta" ${user.username === 'client_delta' ? 'selected' : ''}>Hospital Delta (Node Enclave)</option>
+                <option value="client_epsilon" ${user.username === 'client_epsilon' ? 'selected' : ''}>Hospital Epsilon (Node Enclave)</option>
+                <option value="client_gamma" ${user.username === 'client_gamma' ? 'selected' : ''}>Hospital Gamma (Node Enclave)</option>
+                <option value="client_beta" ${user.username === 'client_beta' ? 'selected' : ''}>Hospital Beta (Node Enclave)</option>
+              </select>
+            </div>
+
+            <div style="text-align: right; font-size: 0.8rem; line-height: 1.3;">
+              <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(user.username)}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(user.role)} &bull; ${escapeHtml(user.organization_name || 'FedNexus')}</div>
+            </div>
+
+            <button id="btn-logout" class="btn btn-secondary btn-sm">
+              Sign Out
+            </button>
           </div>
-          <span class="brand-tag">UNIFIED VIVA EDITION</span>
         </div>
 
-        <nav class="nav-links">
-          <button class="nav-btn ${this.currentView === 'command' ? 'active' : ''}" data-view="command">
+        <nav class="header-nav">
+          <button class="nav-link-btn ${this.currentView === 'overview' ? 'active' : ''}" data-view="overview">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            Command Center
+            Overview
           </button>
-          <button class="nav-btn ${this.currentView === 'map' ? 'active' : ''}" data-view="map">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-            Federation Map
+
+          <button class="nav-link-btn ${this.currentView === 'patients' ? 'active' : ''}" data-view="patients">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Patient Dataset
           </button>
-          
-          <!-- Strict RBAC: Training Control Tab ONLY rendered for Admin and Operator -->
+
           ${isAdminOrOp ? `
-            <button class="nav-btn ${this.currentView === 'training' ? 'active' : ''}" data-view="training">
+            <button class="nav-link-btn ${this.currentView === 'training' ? 'active' : ''}" data-view="training">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              Training Control
+              Federated Training
             </button>
           ` : ''}
 
-          <button class="nav-btn ${this.currentView === 'models' ? 'active' : ''}" data-view="models">
+          <button class="nav-link-btn ${this.currentView === 'models' ? 'active' : ''}" data-view="models">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-            Model Registry
+            Model Results
           </button>
-          <button class="nav-btn ${this.currentView === 'security' ? 'active' : ''}" data-view="security">
+
+          <button class="nav-link-btn ${this.currentView === 'security' ? 'active' : ''}" data-view="security">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            Security & Threat
+            Security & Audit
           </button>
-          <button class="nav-btn ${this.currentView === 'infrastructure' ? 'active' : ''}" data-view="infrastructure">
+
+          <button class="nav-link-btn ${this.currentView === 'infrastructure' ? 'active' : ''}" data-view="infrastructure">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-            Unified Infrastructure
+            Infrastructure & Settings
           </button>
-          <button class="nav-btn ${this.currentView === 'cost' ? 'active' : ''}" data-view="cost">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-            Cloud Cost
-          </button>
-          <button class="nav-btn ${this.currentView === 'viva' ? 'active' : ''}" data-view="viva">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            Viva Q&A Review
-          </button>
-          <button class="nav-btn ${this.currentView === 'audit' ? 'active' : ''}" data-view="audit">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            Audit Logs
+
+          <button class="nav-link-btn ${this.currentView === 'viva' ? 'active' : ''}" data-view="viva" style="margin-left: auto; color: var(--text-muted); font-size: 0.8rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Viva Reference
           </button>
         </nav>
-
-        <div class="nav-user" style="display: flex; align-items: center; gap: 12px;">
-          <!-- 1-Click Role Switcher for Live Reviewer Presentation -->
-          <div style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.85); padding: 5px 10px; border-radius: var(--radius-md); border: 1px solid var(--accent-sky);">
-            <span style="font-size: 0.7rem; color: var(--accent-sky); font-weight: 700;">DEMO ROLE:</span>
-            <select id="quick-role-select" class="form-control mono" style="padding: 2px 8px; font-size: 0.75rem; height: 26px; width: auto; background: transparent; border: none; color: #ffffff; font-weight: 600; cursor: pointer;">
-              <option value="admin" ${user.username === 'admin' ? 'selected' : ''}>👑 Administrator (Full Ops)</option>
-              <option value="operator" ${user.username === 'operator' ? 'selected' : ''}>🛠️ Operator (Training & Chaos)</option>
-              <option value="auditor" ${user.username === 'auditor' ? 'selected' : ''}>🔍 Compliance Auditor (Read-Only)</option>
-              <option value="client_alpha" ${user.username === 'client_alpha' ? 'selected' : ''}>🏥 Hospital Alpha (Edge Enclave)</option>
-            </select>
-          </div>
-
-          <div style="text-align: right;">
-            <div style="font-size: 0.82rem; font-weight: 600; color: #ffffff;">${user.username}</div>
-            <div style="font-size: 0.68rem; color: var(--text-muted);">${user.role} &bull; ${user.organization_name || 'FederAI Admin'}</div>
-          </div>
-
-          <button id="btn-logout" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem;">
-            Logout
-          </button>
-        </div>
       </header>
 
       ${roleBanner}
 
-      <main class="content-view" id="view-content"></main>
+      <main class="app-main" id="view-content"></main>
+
+      <footer class="app-footer">
+        <div class="footer-status-pill">
+          <span class="status-dot"></span>
+          <span>FedNexus Active &bull; PostgreSQL Enclave Connected</span>
+        </div>
+        <div>
+          <span>Train Together. Share Intelligence, Not Data. &bull; Academic Project Release 2026</span>
+        </div>
+      </footer>
     `;
 
     // Navigation events
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.nav-link-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.navigate(btn.dataset.view);
       });
     });
 
-    // 1-Click Role Switcher handler
+    document.getElementById('brand-home-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.navigate('overview');
+    });
+
+    // Role switcher
     document.getElementById('quick-role-select')?.addEventListener('change', async (e) => {
-      const targetUser = e.target.value;
+      const target = e.target.value;
       try {
-        await api.quickSwitchUser(targetUser);
+        await api.quickSwitchUser(target);
         const newUser = api.user;
         const newIsAdminOrOp = (newUser && (newUser.role === 'ADMIN' || newUser.role === 'OPERATOR'));
-        
-        // If switching to Auditor or Hospital Node while on Training tab, reset view to Command Center
         if (this.currentView === 'training' && !newIsAdminOrOp) {
-          this.currentView = 'command';
+          this.currentView = 'overview';
         }
-        
         this.renderLayout();
         await this.refreshState(true);
       } catch (err) {
@@ -306,6 +356,7 @@ class FederAIApp {
       }
     });
 
+    // Logout
     document.getElementById('btn-logout')?.addEventListener('click', () => {
       api.logout();
     });
@@ -313,17 +364,21 @@ class FederAIApp {
     this.renderCurrentView();
   }
 
-  renderLoginModal() {
+  renderLoginScreen() {
     document.getElementById('app').innerHTML = `
-      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
-        <div class="glass-panel" style="max-width: 480px; width: 100%; padding: 36px; text-align: center;">
-          <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #0ea5e9, #8b5cf6); color: #ffffff; font-size: 1.6rem; font-weight: 800; margin-bottom: 20px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.4);">
-            F
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg-app);">
+        <div class="card" style="max-width: 440px; width: 100%; padding: 32px; box-shadow: var(--shadow-md);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--accent-primary); color: #ffffff; font-size: 1.4rem; font-weight: 700; margin-bottom: 12px;">
+              F
+            </div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">FedNexus</h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">Train Together. Share Intelligence, Not Data.</p>
           </div>
-          <h2 style="font-size: 1.6rem; margin-bottom: 8px;">FederAI Cloud</h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px;">Unified Secure Federated AI Platform & Control Plane</p>
 
-          <form id="login-form" style="text-align: left;">
+          <form id="login-form">
+            <div id="login-error" style="display: none;" class="alert alert-danger"></div>
+
             <div class="form-group">
               <label class="form-label">Username</label>
               <input type="text" id="login-username" class="form-control mono" value="admin" required>
@@ -332,25 +387,39 @@ class FederAIApp {
               <label class="form-label">Password</label>
               <input type="password" id="login-password" class="form-control mono" value="AdminPassword123!" required>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 12px; font-size: 0.95rem;">
-              Sign In to Command Center
+            <button type="submit" class="btn btn-primary" id="btn-login-submit" style="width: 100%; padding: 10px; margin-top: 8px;">
+              Sign In to Platform
             </button>
           </form>
 
-          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-subtle); text-align: left; font-size: 0.75rem;">
-            <div style="color: var(--text-muted); margin-bottom: 8px;"><strong>1-Click Quick Demo Sign In:</strong></div>
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-default);">
+            <div style="color: var(--text-muted); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">
+              1-Click Review Credentials:
+            </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <button class="btn btn-secondary btn-quick-login" data-u="admin" data-p="AdminPassword123!" style="font-size: 0.75rem; padding: 8px;">
-                👑 Administrator
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="admin" data-p="AdminPassword123!">
+                Admin
               </button>
-              <button class="btn btn-secondary btn-quick-login" data-u="operator" data-p="OperatorPass123!" style="font-size: 0.75rem; padding: 8px;">
-                🛠️ Operator
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="operator" data-p="OperatorPass123!">
+                Operator
               </button>
-              <button class="btn btn-secondary btn-quick-login" data-u="auditor" data-p="AuditorPass123!" style="font-size: 0.75rem; padding: 8px;">
-                🔍 Compliance Auditor
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="auditor" data-p="AuditorPass123!">
+                Auditor
               </button>
-              <button class="btn btn-secondary btn-quick-login" data-u="client_alpha" data-p="ClientAlpha123!" style="font-size: 0.75rem; padding: 8px;">
-                🏥 Hospital Alpha
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="client_alpha" data-p="ClientAlpha123!">
+                Hospital Alpha
+              </button>
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="client_delta" data-p="ClientDelta123!">
+                Hospital Delta
+              </button>
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="client_epsilon" data-p="ClientEpsilon123!">
+                Hospital Epsilon
+              </button>
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="client_gamma" data-p="ClientGamma123!">
+                Hospital Gamma
+              </button>
+              <button class="btn btn-secondary btn-sm btn-quick" data-u="client_beta" data-p="ClientBeta123!">
+                Hospital Beta
               </button>
             </div>
           </div>
@@ -358,13 +427,13 @@ class FederAIApp {
       </div>
     `;
 
-    document.querySelectorAll('.btn-quick-login').forEach(btn => {
+    document.querySelectorAll('.btn-quick').forEach(btn => {
       btn.addEventListener('click', async () => {
         try {
           await api.login(btn.dataset.u, btn.dataset.p);
           this.init();
         } catch (err) {
-          alert(`Quick login failed: ${err.message}`);
+          alert(`Quick sign-in failed: ${err.message}`);
         }
       });
     });
@@ -373,18 +442,52 @@ class FederAIApp {
       e.preventDefault();
       const u = document.getElementById('login-username').value;
       const p = document.getElementById('login-password').value;
+      const errBox = document.getElementById('login-error');
+      const submitBtn = document.getElementById('btn-login-submit');
+
+      errBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying credentials...';
 
       try {
         await api.login(u, p);
         this.init();
       } catch (err) {
-        alert(`Login failed: ${err.message}`);
+        errBox.textContent = err.message;
+        errBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In to Platform';
       }
     });
   }
 }
 
-window.app = new FederAIApp();
-window.addEventListener('DOMContentLoaded', () => {
-  window.app.init();
-});
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+window.app = new FedNexusApp();
+
+async function startFedNexus() {
+  try {
+    await window.app.init();
+  } catch (err) {
+    console.error('[FedNexus] Bootstrap error:', err);
+    if (window.app) {
+      window.app.renderLoginScreen();
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startFedNexus);
+} else {
+  // DOM is already ready (deferred module script execution)
+  startFedNexus();
+}

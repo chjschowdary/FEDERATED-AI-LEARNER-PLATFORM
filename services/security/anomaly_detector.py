@@ -11,7 +11,7 @@ class ThreatAnomalyDetector:
     3. Pairwise Spectral Deviation.
     4. Gradient Magnitude Thresholding.
     """
-    def __init__(self, cosine_threshold: float = 0.20, z_score_threshold: float = 1.6, threat_score_cutoff: float = 50.0):
+    def __init__(self, cosine_threshold: float = 0.20, z_score_threshold: float = 2.2, threat_score_cutoff: float = 50.0):
         self.cosine_threshold = cosine_threshold # Min acceptable cosine similarity
         self.z_score_threshold = z_score_threshold
         self.threat_score_cutoff = threat_score_cutoff

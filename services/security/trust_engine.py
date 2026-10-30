@@ -62,7 +62,9 @@ class TrustScoreEngine:
             new_score = max(5.0, old_score - penalty)
             record["anomalies_detected"] += 1
             record["consecutive_honest_rounds"] = 0
-            reason = f"Security Violation: Anomaly detected (Threat Score: {threat_score:.1f})"
+            threat_reasons = security_eval.get("threat_reasons", [])
+            reason_str = "; ".join(threat_reasons) if threat_reasons else f"Threat anomaly detected (Threat Score: {threat_score:.1f})"
+            reason = f"Security Violation: {reason_str}"
         else:
             # Incremental positive reinforcement
             record["rounds_passed"] += 1

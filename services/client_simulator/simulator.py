@@ -26,8 +26,28 @@ class FederatedClientSimulator:
         attack_type: str = "sign_flipping"
     ) -> Dict[str, Any]:
         
-        # 1. Access isolated private dataset
-        X, y = self.data_repo.get_client_dataset(client_id)
+        # 1. Access isolated private dataset from local hospital enclave (PostgreSQL partition)
+        X = None
+        y = None
+        try:
+            from database.session import SessionLocal
+            from database.models.schema import SyntheticPatient
+            db = SessionLocal()
+            try:
+                db_patients = db.query(SyntheticPatient).filter(SyntheticPatient.client_id == client_id).all()
+                if len(db_patients) >= 5:
+                    X = np.array([p.to_feature_vector() for p in db_patients], dtype=np.float64)
+                    labels_raw = np.array([p.risk_label for p in db_patients], dtype=int)
+                    y = np.zeros((len(db_patients), 2), dtype=np.float64)
+                    y[np.arange(len(db_patients)), labels_raw] = 1.0
+            finally:
+                db.close()
+        except Exception as db_err:
+            print(f"[ClientSimulator] Notice: reading DB for {client_id} fallback to generator: {db_err}")
+            
+        if X is None or len(X) == 0:
+            X, y = self.data_repo.get_client_dataset(client_id)
+            
         n_samples = X.shape[0]
         
         # Attack simulation: Label flipping during local training

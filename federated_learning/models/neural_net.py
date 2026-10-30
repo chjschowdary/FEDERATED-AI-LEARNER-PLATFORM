@@ -15,16 +15,16 @@ class ClinicalRiskMLP:
         self.hidden_dim1 = hidden_dim1
         self.hidden_dim2 = hidden_dim2
         self.num_classes = num_classes
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
         
         # He initialization for ReLU layers
-        self.W1 = np.random.randn(input_dim, hidden_dim1) * np.sqrt(2.0 / input_dim)
+        self.W1 = rng.randn(input_dim, hidden_dim1) * np.sqrt(2.0 / input_dim)
         self.b1 = np.zeros((1, hidden_dim1))
         
-        self.W2 = np.random.randn(hidden_dim1, hidden_dim2) * np.sqrt(2.0 / hidden_dim1)
+        self.W2 = rng.randn(hidden_dim1, hidden_dim2) * np.sqrt(2.0 / hidden_dim1)
         self.b2 = np.zeros((1, hidden_dim2))
         
-        self.W3 = np.random.randn(hidden_dim2, num_classes) * np.sqrt(2.0 / hidden_dim2)
+        self.W3 = rng.randn(hidden_dim2, num_classes) * np.sqrt(2.0 / hidden_dim2)
         self.b3 = np.zeros((1, num_classes))
 
     def get_parameters(self) -> Dict[str, np.ndarray]:

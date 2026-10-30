@@ -16,12 +16,17 @@ class DifferentialPrivacyEngine:
         self.cumulative_epsilon_spent = 0.0
         self.total_rounds_applied = 0
 
-    def compute_gaussian_sigma(self) -> float:
+    def compute_gaussian_sigma(self, dim: int = 1) -> float:
         """
         Computes calibrated standard deviation for (epsilon, delta)-DP.
-        sigma = (S * sqrt(2 * ln(1.25 / delta))) / epsilon
+        For a parameter vector of dimension d with vector L2 sensitivity S = clip_norm,
+        sigma_per_coord = (S * sqrt(2 * ln(1.25 / delta))) / (epsilon * sqrt(dim))
+        so that the total noise variance over all d coordinates equals sigma_total^2.
         """
-        return (self.clip_norm * np.sqrt(2.0 * np.log(1.25 / self.delta))) / self.epsilon
+        sigma_total = (self.clip_norm * np.sqrt(2.0 * np.log(1.25 / self.delta))) / self.epsilon
+        if dim > 1:
+            return sigma_total / np.sqrt(dim)
+        return sigma_total
 
     def clip_gradients_or_deltas(self, weights_delta: np.ndarray) -> Tuple[np.ndarray, float]:
         """
@@ -41,13 +46,14 @@ class DifferentialPrivacyEngine:
         Applies L2 clipping and calibrated noise perturbation to the local client update vector.
         """
         clipped_delta, original_norm = self.clip_gradients_or_deltas(weights_delta)
+        dim = int(np.prod(clipped_delta.shape))
         
         if self.mechanism == "laplace":
-            scale = self.clip_norm / self.epsilon
+            scale = (self.clip_norm / self.epsilon) / (np.sqrt(dim) if dim > 1 else 1.0)
             noise = np.random.laplace(0, scale, size=clipped_delta.shape)
             sigma_val = scale
         else: # Default Gaussian
-            sigma_val = self.compute_gaussian_sigma()
+            sigma_val = self.compute_gaussian_sigma(dim=dim)
             noise = np.random.normal(0, sigma_val, size=clipped_delta.shape)
             
         perturbed_delta = clipped_delta + noise

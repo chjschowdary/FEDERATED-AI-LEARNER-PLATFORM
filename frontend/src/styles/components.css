@@ -1,331 +1,312 @@
 /* ==========================================================================
-   Component-Specific Styles & Visualizations
+   FedNexus Component-Specific Styles
+   Clean layouts for Patient Dataset, Training, Radar, and Infrastructure
    ========================================================================== */
 
-/* Network Visualization Canvas Container */
-.network-canvas-container {
-  position: relative;
-  width: 100%;
-  height: 480px;
-  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.08) 0%, rgba(6, 9, 15, 0.95) 80%);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.network-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.node-group {
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.node-group:hover {
-  transform: scale(1.06);
-}
-
-.node-ring {
-  fill: none;
-  stroke-width: 1.5;
-  transition: all 0.3s ease;
-}
-
-.node-core {
-  transition: all 0.3s ease;
-}
-
-/* Charts & Plots */
-.chart-container {
-  width: 100%;
-  height: 260px;
-  position: relative;
-}
-
-/* Tables */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.85rem;
-}
-
-.data-table th {
-  padding: 12px 16px;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(12, 18, 30, 0.5);
-}
-
-.data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-}
-
-.data-table tr:hover td {
-  background: rgba(56, 189, 248, 0.03);
-}
-
-/* Forms & Inputs */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px 14px;
-  background: rgba(10, 15, 26, 0.8);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.9rem;
-  transition: border-color 0.2s ease;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--accent-sky);
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
-}
-
-.form-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-}
-
-/* Range Slider */
-input[type=range] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 6px;
-  background: rgba(30, 41, 59, 0.8);
-  border-radius: 3px;
-  outline: none;
-}
-
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-sky);
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.6);
-  transition: transform 0.1s ease;
-}
-
-input[type=range]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
-/* Toggle Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(30, 41, 59, 0.8);
-  transition: .3s;
-  border-radius: 24px;
-  border: 1px solid var(--border-subtle);
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: #ffffff;
-  transition: .3s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--accent-rose);
-  border-color: var(--accent-rose);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-/* Viva Mode Grid */
-.viva-grid {
+/* Patient Grid in Modal */
+.form-grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.viva-card {
-  padding: 24px;
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .form-grid-2, .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Patient Clinical Parameters Detail Box */
+.clinical-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.param-item {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
-.viva-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+.param-name {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
-.viva-tag {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--accent-sky);
-  background: rgba(56, 189, 248, 0.1);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.viva-q {
+.param-val {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
-  line-height: 1.4;
+  font-family: var(--font-mono);
+  margin-top: 2px;
 }
 
-.viva-a {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  background: rgba(10, 15, 26, 0.6);
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--accent-sky);
-}
-
-/* Modal / Drawer */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 100;
+/* Radar & Trust Visualization Container */
+.radar-card-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.modal-container {
-  max-width: 650px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 28px;
-}
-
-/* Step Progress Indicator */
-.step-tracker {
+.radar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: relative;
-  margin: 24px 0;
+  padding: 10px 14px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  gap: 12px;
 }
 
-.step-tracker::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--border-subtle);
-  z-index: 1;
-  transform: translateY(-50%);
+.radar-client-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
 }
 
-.step-item {
-  position: relative;
-  z-index: 2;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-subtle);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+.radar-bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--neutral-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.bar-fill-trust { background: var(--status-success); }
+.bar-fill-align { background: var(--accent-primary); }
+.bar-fill-danger { background: var(--status-danger); }
+
+/* Service Health Matrix */
+.services-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.service-health-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-info h4 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.service-info p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Cost Breakdown Table */
+.cost-total-banner {
+  background: var(--accent-primary-subtle);
+  border: 1px solid var(--accent-primary-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cost-amount {
+  font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text-muted);
-  transition: all 0.3s ease;
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
 }
 
-.step-item.active {
-  border-color: var(--accent-sky);
-  color: var(--accent-sky);
-  box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+/* Range Sliders */
+.range-slider-group {
+  margin-bottom: 14px;
 }
 
-.step-item.completed {
-  background: var(--accent-emerald);
-  border-color: var(--accent-emerald);
-  color: #ffffff;
-}
-
-/* Infrastructure Sub-Tab Navigation */
-.infra-tab-btn {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.infra-tab-btn:hover {
-  background: rgba(30, 41, 59, 0.9);
-  color: #ffffff;
-  border-color: rgba(56, 189, 248, 0.3);
-}
-
-.infra-tab-btn.active {
-  background: rgba(14, 165, 233, 0.15) !important;
-  color: var(--accent-sky) !important;
-  border-color: var(--accent-sky) !important;
-  box-shadow: 0 0 12px rgba(14, 165, 233, 0.25);
+.range-slider-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
   font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
 }
 
+.range-slider {
+  width: 100%;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+/* Inline Alert */
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.alert-danger {
+  background: var(--status-danger-bg);
+  border: 1px solid var(--status-danger-border);
+  color: var(--status-danger);
+}
+
+.alert-success {
+  background: var(--status-success-bg);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success);
+}
+
+.alert-info {
+  background: var(--status-info-bg);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info);
+}
+
+/* Technical Q&A accordion / cards */
+.qa-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.qa-card-header {
+  padding: 12px 16px;
+  background: var(--bg-surface-subtle);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.qa-card-body {
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Hospital Trust Penalty & Quarantine Diagnostics Section */
+.incident-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.incident-card-quarantined {
+  border-color: var(--status-danger-border);
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+}
+
+.incident-card-penalized {
+  border-color: var(--status-warning-border);
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08);
+}
+
+.incident-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-surface-subtle);
+  border-bottom: 1px solid var(--border-default);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.incident-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.incident-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.incident-metric-box {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.incident-metric-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.incident-metric-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+.incident-reason-box {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--status-danger-bg);
+  border: 1px solid var(--status-danger-border);
+}
+
+.incident-reason-box.warning-tone {
+  background: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+}
+
+.incident-reason-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}

@@ -1,14 +1,14 @@
-# FederAI Cloud — A Cloud-Native, Secure and Privacy-Preserving Infrastructure for Federated AI
+# FedNexus — Healthcare Federated AI Cloud Infrastructure
 
 <div align="center">
 
 ```
-███████╗███████╗██████╗ ███████╗██████╗  █████╗ ██╗     ██████╗██╗      ██████╗ ██╗   ██╗██████╗ 
-██╔════╝██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██║    ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗
-█████╗  █████╗  ██║  ██║█████╗  ██████╔╝███████║██║    ██║     ██║     ██║   ██║██║   ██║██║  ██║
-██╔══╝  ██╔══╝  ██║  ██║██╔══╝  ██╔══██╗██╔══██║██║    ██║     ██║     ██║   ██║██║   ██║██║  ██║
-██║     ███████╗██████╔╝███████╗██║  ██║██║  ██║██║    ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝
-╚═╝     ╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ 
+███████╗███████╗██████╗ ███╗   ██╗███████╗██╗   ██╗██╗   ██╗███████╗
+██╔════╝██╔════╝██╔══██╗████╗  ██║██╔════╝╚██╗ ██╔╝██║   ██║██╔════╝
+█████╗  █████╗  ██║  ██║██╔██╗ ██║█████╗   ╚████╔╝ ██║   ██║███████╗
+██╔══╝  ██╔══╝  ██║  ██║██║╚██╗██║██╔══╝    ╚██╔╝  ██║   ██║╚════██║
+██║     ███████╗██████╔╝██║ ╚████║███████╗   ██║   ╚██████╔╝███████║
+╚═╝     ╚══════╝╚═════╝ ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝ ╚══════╝
 ```
 
 **Train Together. Share Intelligence, Not Data.**
@@ -28,16 +28,16 @@
 
 ## 1. Executive Summary & Vision
 
-Modern artificial intelligence breakthroughs in mission-critical domains (such as healthcare, oncology, rare disease diagnosis, and fraud detection) require massive volumes of diverse training data. However, data in these domains is strictly siloed across institutions due to stringent regulatory privacy mandates (HIPAA, GDPR, CCPA) and intellectual property protections.
+Modern artificial intelligence breakthroughs in mission-critical healthcare domains require massive volumes of diverse training data. However, medical records are strictly siloed across institutions due to stringent regulatory privacy mandates (HIPAA, GDPR, CCPA).
 
-**FederAI Cloud** resolves this fundamental tension by establishing a cloud-native, Byzantine-resilient, privacy-preserving infrastructure for Federated Artificial Intelligence. 
+**FedNexus** (FederAI Cloud) resolves this fundamental challenge by establishing a cloud-native, Byzantine-resilient, privacy-preserving infrastructure for Federated Artificial Intelligence.
 
-Instead of aggregating patient health records into a central data lake, FederAI Cloud coordinates local neural network training on private hospital infrastructure:
-1. The global model architecture is dispatched to edge medical institutions.
-2. Hospitals compute localized weight updates ($\Delta w_k$) strictly within their secure private boundaries.
-3. Updates are protected with **$(\epsilon, \delta)$-Differential Privacy (DP-SGD)** and zero-sum secure masking.
-4. Updates pass through **Statistical Anomaly Filtering** (Cosine Alignment & Gradient Norm Z-scores).
-5. Updates from untrusted nodes are isolated by the **Dynamic Bayesian Trust Engine**, and honest gradients are aggregated via **Multi-Krum / FedAvg / Trimmed Mean** into a hardened global clinical risk model.
+Instead of centralizing sensitive health records, FedNexus coordinates neural network training across private hospital enclaves:
+1. Global model parameters are dispatched to participating hospital nodes.
+2. Hospitals compute localized weight updates ($\Delta w_k$) strictly within their secure PostgreSQL partitions.
+3. Local gradient vectors are protected with **$(\epsilon, \delta)$-Differential Privacy (DP-SGD)**.
+4. Updates pass through **Statistical Anomaly Filtering** (Directional Cosine Alignment & Gradient Norm Z-scores).
+5. Untrusted nodes are identified by the **Dynamic Bayesian Trust Engine**, and honest gradients are aggregated via **Multi-Krum / FedAvg / Trimmed Mean** into a hardened global clinical risk model.
 
 ---
 
@@ -147,7 +147,7 @@ make install
 # 3. Seed database
 make seed
 
-# 4. Run full test suite (15/15 tests passing)
+# 4. Run full test suite (24/24 tests passing)
 make test
 ```
 
@@ -163,9 +163,9 @@ docker compose ps
 
 | Service | Port | Description |
 | :--- | :--- | :--- |
-| **Frontend Command Center** | `http://localhost:80` (or `http://localhost`) | Real-time futuristic glassmorphism SPA dashboard |
-| **FastAPI Backend Gateway** | `http://localhost:8000` | REST API & Interactive OpenAPI Docs (`/docs`) |
-| **SeaweedFS S3 Gateway** | `http://localhost:8333` | High-performance S3-compatible model storage |
+| **FedNexus Frontend UI** | `http://localhost:80` (or `http://localhost`) | Clean clinical research web interface |
+| **FastAPI Backend Gateway** | `http://localhost:8000` | REST API, WebSocket conduit & OpenAPI Docs (`/docs`) |
+| **MinIO / S3 Object Storage** | `http://localhost:9000` (Console: `:9001`) | S3-compatible model artifact & checkpoint storage |
 | **PostgreSQL 16** | `localhost:5432` | Relational database (DB: `federaicloud`) |
 | **RabbitMQ Management** | `http://localhost:15672` | Event broker UI (User: `federai_guest`, Pass: `guest_secure_pass`) |
 | **Prometheus Server** | `http://localhost:9090` | Time-series metrics engine |
@@ -179,6 +179,53 @@ docker compose ps
 | **Federation Operator** | `operator` | `OperatorPass123!` | Training orchestration, attack injection & unquarantine |
 | **Compliance Auditor** | `auditor` | `AuditorPass123!` | Read-only access to audit logs, security events & models |
 | **Hospital Alpha Client** | `client_alpha` | `ClientAlpha123!` | Client node telemetry and gradient submission |
+
+---
+
+## 5. Platform Navigation & Capabilities
+
+FedNexus features a 6-view clinical research navigation layout:
+
+1. **Overview**: Real-time snapshot of the platform computed directly from PostgreSQL. Displays the total patient cohort size, active hospital nodes, training status, most recent completed training round, production model version, and recent audit events.
+2. **Patient Dataset**: Management interface for synthetic clinical records partitioned across hospital nodes (`client-alpha` to `client-epsilon`). Supports search, pagination, multi-filtering (by client node, by clinical risk level), Add/Edit modal with field validation for all 12 parameters, deletion confirmation, and transactional CSV batch import and export.
+3. **Federated Training**: Orchestration console for launching federated training rounds. Allows tuning local epochs, learning rate, aggregation strategy (`FedAvg`, `TrimmedMean`, `Multi-Krum`), Differential Privacy budget ($\epsilon$, $\delta$), and Byzantine adversarial attack vectors (`sign_flipping`, `gradient_scaling`, `label_flipping`, `random_noise`). Displays real-time WebSocket telemetry, hospital client nodes status with Bayesian trust ratings, and full round history.
+4. **Model Results**: Global model registry and evaluation benchmarks. Displays holdout accuracy, cross-entropy loss, creation timestamps, single-click JSON weights artifact downloads, and rollback to previous stable model versions.
+5. **Security & Audit**: Byzantine consensus radar visualizing directional cosine alignment, norm stability, and trust scores. Displays real recorded anomaly events, node unquarantine controls, and full cryptographic audit trails.
+6. **Infrastructure & Settings**: Health matrix of microservices, direct links to Grafana and RabbitMQ consoles, simulated pod failure chaos testing, AWS reference cloud cost estimation model, and session configuration metadata.
+
+---
+
+## 6. DA2 Project Review Demonstration Sequence
+
+For a fast, smooth project evaluation during university review:
+
+1. **Sign In**: Launch the application at `http://localhost:80` (or `http://localhost:8000`). Click the `👑 Administrator` 1-click button or enter `admin` / `AdminPassword123!`.
+2. **Review Overview**: Verify that 250 synthetic patient records are partitioned across 5 hospital nodes, with the base production model and audit events visible.
+3. **Inspect Patient Dataset**: Navigate to **Patient Dataset**. Demonstrate searching by ref ID, filtering by `Hospital Alpha` or `High Risk Only`, clicking **View** on a patient to inspect the 12 clinical parameters, and clicking **Export CSV** to download the dataset.
+4. **Launch Honest Training Round**: Navigate to **Federated Training**. Select `TrimmedMean` aggregation, verify hyperparameters, and click **Launch Training Round**. Watch the live telemetry log display local SGD updates across the 5 hospital enclaves, reaching consensus with holdout accuracy displayed.
+5. **Demonstrate Byzantine Anomaly Detection**: Check **Simulate Byzantine Adversarial Vector**, select target node `Hospital Delta` and attack `Sign Flipping (-1.5 * Δw)`. Click **Launch Training Round**. Observe that the Cosine Anomaly Filter rejects Hospital Delta's gradient, quarantines the node, penalizes its Bayesian trust score, and preserves model convergence.
+6. **Inspect Security Radar & Audit Trail**: Navigate to **Security & Audit**. Show the detected anomaly event in the Security Anomaly table and the corresponding HMAC audit log entry.
+7. **Download Model Checkpoint**: Navigate to **Model Results**. Click **Download Model Weights (JSON Artifact)** to show the registered checkpoint file with exact weights.
+8. **Demonstrate Role-Based Access Control (RBAC)**: Use the top-right **ROLE** dropdown to switch to `Compliance Auditor`. Notice that training controls and attack simulation are cleanly disabled, enforcing read-only compliance integrity.
+A
+### 4.4 Synthetic Patient Enclaves & Dataset Generation
+FederAI Cloud partitions decentralized synthetic clinical telemetry across participating hospital nodes (`client-alpha` through `client-epsilon`). Features conform to the 12-dimensional `ClinicalRiskMLP` neural network.
+
+```bash
+# Generate synthetic patient cohort for a specific hospital node
+python3 scripts/generate_synthetic_patients.py --count 100 --client client-alpha --output my_patients.csv
+
+# Seed or reset the database partitions with 250 verified synthetic records
+make seed
+```
+
+Available Enclave REST Endpoints:
+- `GET /api/patients`: Searchable, paginated query across hospital partitions
+- `GET /api/patients/stats`: Cohort size, high-risk vs. low-risk distribution per client
+- `POST /api/patients`: Insert new synthetic clinical record into a hospital partition
+- `POST /api/patients/import-csv`: Batch-import validated clinical records via CSV
+- `GET /api/patients/export/csv`: Export current enclave records as CSV
+- `GET /api/dashboard/stats`: High-level executive overview of patients, nodes, and rounds
 
 ---
 

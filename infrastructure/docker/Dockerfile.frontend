@@ -51,18 +51,6 @@ server {
         proxy_set_header Connection "Upgrade";
         proxy_set_header Host \$host;
     }
-
-    # Direct proxy to SeaweedFS Filer (port 8888)
-    location /filer/ {
-        proxy_pass http://seaweedfs:8888/;
-        proxy_set_header Host \$host;
-    }
-
-    # Direct proxy to SeaweedFS Master (port 9333)
-    location /master/ {
-        proxy_pass http://seaweedfs:9333/;
-        proxy_set_header Host \$host;
-    }
 }
 EOF
 

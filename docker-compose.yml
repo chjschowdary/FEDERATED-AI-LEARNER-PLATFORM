@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U federai -d federaicloud"]
+      test: [ "CMD-SHELL", "pg_isready -U federai -d federaicloud" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,10 +27,10 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-federai_guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest_secure_pass}
     ports:
-      - "5672:5672"   # AMQP protocol
+      - "5672:5672" # AMQP protocol
       - "15672:15672" # Management UI
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -51,8 +51,6 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9333/cluster/status > /dev/null || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
 
   # 4. Backend Microservices API Gateway
   api-gateway:
@@ -77,6 +75,9 @@ services:
       S3_BUCKET_NAME: federaicloud-artifacts
       AWS_REGION: us-east-1
       RABBITMQ_URL: amqp://federai_guest:guest_secure_pass@rabbitmq:5672/
+    volumes:
+      - ./services:/app/services:ro
+      - ./database:/app/database:ro
     ports:
       - "8000:8000"
 
